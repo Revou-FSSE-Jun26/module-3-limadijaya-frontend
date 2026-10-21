@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 import type { Product } from "@/lib/types";
 import { fetchProductsClient } from "@/lib/client-api";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 import SearchBar from "./SearchBar";
 import CategoryFilter from "./CategoryFilter";
 import ProductGrid from "./ProductGrid";
@@ -29,10 +32,30 @@ export default function ProductList({ products }: ProductListProps) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") ?? "";
 
+  const { isAuthenticated, isAdmin } = useAuth();
+  const { addItem } = useCart();
+  const router = useRouter();
+
   const [items, setItems] = useState<Product[]>(products);
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Add-to-cart from a grid card. Mirrors AddToCartButton's auth rules:
+  // logged-out → /login, admins blocked, otherwise add + toast.
+  function handleAddToCart(product: Product, quantity: number) {
+    if (!isAuthenticated) {
+      toast("Please sign in to add items to your cart.", { icon: "🔒" });
+      router.push("/login");
+      return;
+    }
+    if (isAdmin) {
+      toast.error("Admins manage the catalog and cannot place orders.");
+      return;
+    }
+    addItem(product, quantity);
+    toast.success(`Added ${product.name} to cart.`);
+  }
 
   // Refetch whenever the URL search query or the selected category changes.
   useEffect(() => {
@@ -96,6 +119,7 @@ export default function ProductList({ products }: ProductListProps) {
       ) : (
         <ProductGrid
           products={items}
+          onAddToCart={handleAddToCart}
           emptyMessage="No products match your filters."
         />
       )}

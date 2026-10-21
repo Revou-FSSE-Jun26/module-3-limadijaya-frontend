@@ -8,6 +8,26 @@ export function formatPrice(amount: number): string {
   }).format(amount);
 }
 
+/** Tailwind badge classes for an order status (shared across order views). */
+export function orderStatusClasses(status: string): string {
+  const map: Record<string, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    confirmed: "bg-blue-100 text-blue-700",
+    shipped: "bg-indigo-100 text-indigo-700",
+    delivered: "bg-green-100 text-green-700",
+    completed: "bg-green-100 text-green-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+  return map[status] ?? "bg-zinc-100 text-zinc-700";
+}
+
+/** Order statuses that count as "active" for the product delete guard. */
+export const ACTIVE_ORDER_STATUSES = [
+  "pending",
+  "confirmed",
+  "shipped",
+] as const;
+
 /**
  * Return the Tailwind class string for the Add to Cart / stock button.
  * Different styles communicate whether the product is purchasable.

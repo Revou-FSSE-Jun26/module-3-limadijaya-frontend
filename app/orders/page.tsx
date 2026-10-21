@@ -1,89 +1,110 @@
-import { Suspense } from "react";
-import { getOrders } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { useRequireAuth } from "@/lib/useRequireAuth";
+import { fetchOrdersClient } from "@/lib/client-api";
+import { formatPrice, orderStatusClasses } from "@/lib/format";
+import type { Order } from "@/lib/types";
 import Card from "@/components/Card";
-
-export const metadata = {
-  title: "Orders",
-  description: "View all RevoShop orders, fetched live from the API.",
-};
-
-/** Tailwind badge classes per order status. */
-function statusClasses(status: string): string {
-  const map: Record<string, string> = {
-    pending: "bg-amber-100 text-amber-700",
-    confirmed: "bg-blue-100 text-blue-700",
-    shipped: "bg-indigo-100 text-indigo-700",
-    delivered: "bg-green-100 text-green-700",
-    completed: "bg-green-100 text-green-700",
-    cancelled: "bg-red-100 text-red-700",
-  };
-  return map[status] ?? "bg-zinc-100 text-zinc-700";
-}
+import LoadingState from "@/components/LoadingState";
 
 /**
- * Orders page. The live GET /orders fetch streams behind <Suspense>.
+ * /orders — a customer's own order history.
+ *
+ * Customer-only (useRequireAuth sends guests to /login). The API returns all
+ * orders, so the page filters to the logged-in user's id. Admins are routed to
+ * the read-only dashboard overview instead; if an admin lands here they are
+ * redirected away by useRequireAuth-less logic below.
  */
 export default function OrdersPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-zinc-900">Orders</h1>
-      <Suspense fallback={<OrdersSkeleton />}>
-        <OrderList />
-      </Suspense>
-    </div>
-  );
-}
+  const { checking } = useRequireAuth();
+  const { user } = useAuth();
 
-/** Inner Server Component that fetches GET /orders with async/await. */
-async function OrderList() {
-  const orders = await getOrders();
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (orders.length === 0) {
-    return (
-      <p className="py-12 text-center text-sm text-zinc-500">No orders yet.</p>
-    );
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    (async () => {
+      try {
+        const all = await fetchOrdersClient();
+        if (active) setOrders(all.filter((o) => o.user_id === user.id));
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Failed to load orders.");
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  if (checking) {
+    return <LoadingState message="Loading your orders..." />;
   }
 
   return (
-    <div className="space-y-4">
-      {orders.map((order) => (
-        <Card key={order.id} className="flex items-center justify-between p-5">
-          <div>
-            <p className="text-base font-semibold text-zinc-900">
-              Order #{order.id}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Placed by user #{order.user_id}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusClasses(
-                order.status,
-              )}`}
-            >
-              {order.status}
-            </span>
-            <span className="text-lg font-bold text-zinc-900">
-              {formatPrice(order.total_amount)}
-            </span>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-zinc-900">Your orders</h1>
 
-function OrdersSkeleton() {
-  return (
-    <div className="space-y-4">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-20 animate-pulse rounded-xl border border-zinc-200 bg-zinc-100"
-        />
-      ))}
+      {error && (
+        <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      {!error && orders === null && (
+        <LoadingState message="Loading your orders..." />
+      )}
+
+      {!error && orders !== null && orders.length === 0 && (
+        <Card className="p-10 text-center">
+          <p className="text-sm text-zinc-500">
+            You haven&rsquo;t placed any orders yet.
+          </p>
+          <Link
+            href="/products"
+            className="mt-4 inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          >
+            Start shopping
+          </Link>
+        </Card>
+      )}
+
+      {!error && orders !== null && orders.length > 0 && (
+        <div className="space-y-4" data-testid="orders-list">
+          {orders.map((order) => (
+            <Link key={order.id} href={`/orders/${order.id}`} className="block">
+              <Card className="flex items-center justify-between p-5 transition-shadow hover:shadow-md">
+                <div>
+                  <p className="text-base font-semibold text-zinc-900">
+                    Order #{order.id}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    View items and details
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${orderStatusClasses(
+                      order.status,
+                    )}`}
+                  >
+                    {order.status}
+                  </span>
+                  <span className="text-lg font-bold text-zinc-900">
+                    {formatPrice(order.total_amount)}
+                  </span>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

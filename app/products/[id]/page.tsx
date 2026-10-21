@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { ApiError, getCategory, getProduct } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import Card from "@/components/Card";
+import AddToCartButton from "@/components/AddToCartButton";
 
 /**
  * Dynamic page title: fetches the product by id and uses its real name as the
@@ -120,6 +121,12 @@ async function ProductDetail({
       {product.description && (
         <p className="mt-4 max-w-2xl text-zinc-600">{product.description}</p>
       )}
+
+      {/* Client island: adds this product to the cart (requires a customer
+          session; see AddToCartButton). */}
+      <div className="mt-6 max-w-xs">
+        <AddToCartButton product={product} className="w-full" />
+      </div>
     </Card>
   );
 }
