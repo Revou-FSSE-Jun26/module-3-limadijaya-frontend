@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { getProducts } from "@/lib/api";
-import { ApiError } from "@/lib/api";
+import { createProduct, getProducts } from "@/lib/api";
+import { errorResponse } from "@/lib/route-helpers";
+import type { ProductInput } from "@/lib/types";
 
 /**
  * Same-origin proxy for client-side product fetching.
  *
  * The browser calls this Next.js route (same origin → no CORS), and the route
- * calls the external Flask API server-side via the shared data layer. This
- * keeps the ProductList client component fetching on every query change while
- * avoiding CORS and the machine's TLS-proxy issues that affect direct
- * browser → external-API calls.
+ * calls the external Flask API server-side via the shared data layer.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,9 +19,17 @@ export async function GET(request: Request) {
     const products = await getProducts({ search, categoryId });
     return NextResponse.json(products);
   } catch (error) {
-    const status = error instanceof ApiError ? error.status : 500;
-    const message =
-      error instanceof Error ? error.message : "Failed to load products.";
-    return NextResponse.json({ error: message }, { status });
+    return errorResponse(error, "Failed to load products.");
+  }
+}
+
+/** Create a product (admin dashboard). Proxies to POST /products. */
+export async function POST(request: Request) {
+  try {
+    const input = (await request.json()) as ProductInput;
+    const product = await createProduct(input);
+    return NextResponse.json(product, { status: 201 });
+  } catch (error) {
+    return errorResponse(error, "Failed to create product.");
   }
 }

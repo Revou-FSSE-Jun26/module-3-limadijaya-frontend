@@ -44,3 +44,68 @@ export interface ApiErrorBody {
   error?: string;
   message?: string;
 }
+
+/** User roles recognized by the app. The API defaults new users to "customer". */
+export type UserRole = "customer" | "admin";
+
+/**
+ * An authenticated user as returned by POST /users (register) and the
+ * `user` field of POST /auth/login. The API does not issue a token, so the
+ * user object itself is the session and is persisted in localStorage.
+ */
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: UserRole;
+  created_at: string | null;
+}
+
+/** Payload for POST /users (registration). */
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+}
+
+/** Payload for POST /auth/login. */
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+/**
+ * A single line in the shopping cart. Stored in localStorage and used to
+ * build the POST /orders payload at checkout.
+ */
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+/** A single line sent to POST /orders. */
+export interface OrderItemInput {
+  product_id: number;
+  quantity: number;
+}
+
+/** Payload for POST /orders. */
+export interface CreateOrderPayload {
+  user_id: number;
+  items: OrderItemInput[];
+}
+
+/** Payload for POST /products and (partial) PUT /products/:id. */
+export interface ProductInput {
+  name: string;
+  description?: string | null;
+  price: number;
+  stock_quantity: number;
+  category_id: number;
+}
+
+/** Payload for POST /categories and (partial) PUT /categories/:id. */
+export interface CategoryInput {
+  name: string;
+  description?: string | null;
+}

@@ -6,7 +6,18 @@
 // the browser), but the plain `fetch` calls also work from Client Components.
 
 import { cache } from "react";
-import type { ApiErrorBody, Category, Order, Product } from "./types";
+import type {
+  ApiErrorBody,
+  Category,
+  CategoryInput,
+  CreateOrderPayload,
+  LoginPayload,
+  Order,
+  Product,
+  ProductInput,
+  RegisterPayload,
+  User,
+} from "./types";
 
 /** Base URL of the Flask API, configured in .env.local. */
 export const API_BASE_URL =
@@ -149,7 +160,8 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getCategory(id: number | string): Promise<Category> {
-  return apiFetch<Category>(`/categories/${id}`);
+  // include_products=true so the admin delete guard can detect linked products.
+  return apiFetch<Category>(`/categories/${id}?include_products=true`);
 }
 
 // --- Orders -----------------------------------------------------------------
@@ -159,5 +171,86 @@ export async function getOrders(): Promise<Order[]> {
 }
 
 export async function getOrder(id: number | string): Promise<Order> {
-  return apiFetch<Order>(`/orders/${id}`);
+  return apiFetch<Order>(`/orders/${id}?include_items=true`);
+}
+
+export async function createOrder(payload: CreateOrderPayload): Promise<Order> {
+  return apiFetch<Order>("/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+// --- Auth -------------------------------------------------------------------
+
+/** Register a new user. The API creates the user with role "customer". */
+export async function registerUser(payload: RegisterPayload): Promise<User> {
+  return apiFetch<User>("/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Log a user in. Returns the user object (the API does not issue a token). */
+export async function loginUser(payload: LoginPayload): Promise<User> {
+  const data = await apiFetch<{ message: string; user: User }>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return data.user;
+}
+
+// --- Product mutations (admin) ---------------------------------------------
+
+export async function createProduct(input: ProductInput): Promise<Product> {
+  return apiFetch<Product>("/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateProduct(
+  id: number | string,
+  input: Partial<ProductInput>,
+): Promise<Product> {
+  return apiFetch<Product>(`/products/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteProduct(id: number | string): Promise<void> {
+  await apiFetch<{ message: string }>(`/products/${id}`, { method: "DELETE" });
+}
+
+// --- Category mutations (admin) --------------------------------------------
+
+export async function createCategory(input: CategoryInput): Promise<Category> {
+  return apiFetch<Category>("/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateCategory(
+  id: number | string,
+  input: Partial<CategoryInput>,
+): Promise<Category> {
+  return apiFetch<Category>(`/categories/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCategory(id: number | string): Promise<void> {
+  await apiFetch<{ message: string }>(`/categories/${id}`, {
+    method: "DELETE",
+  });
 }
