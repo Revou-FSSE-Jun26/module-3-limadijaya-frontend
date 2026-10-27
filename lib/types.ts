@@ -45,6 +45,16 @@ export interface ApiErrorBody {
   message?: string;
 }
 
+/**
+ * Discriminated union modelling the two possible shapes of an API call result.
+ * The `ok` literal is the discriminant: when `true` the value carries typed
+ * `data`; when `false` it carries an error `message` and HTTP `status`. Callers
+ * narrow on `result.ok` to access the right shape safely.
+ */
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number; message: string };
+
 /** User roles recognized by the app. The API defaults new users to "customer". */
 export type UserRole = "customer" | "admin";
 

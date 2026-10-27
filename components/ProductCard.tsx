@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatPrice, getButtonClasses } from "@/lib/format";
+import { useAuth } from "@/context/AuthContext";
 import Card from "./Card";
 
 export interface ProductCardProps {
@@ -37,11 +38,15 @@ export default function ProductCard({
   linkToDetail = true,
 }: ProductCardProps) {
   const [quantity, setQuantity] = useState(1);
+  const { isAuthenticated } = useAuth();
 
   const inStock = product.stock_quantity > 0;
   const lowStock = inStock && product.stock_quantity <= 10;
   // Read-only when no handler is provided (e.g. the home page server render).
   const interactive = Boolean(onAddToCart);
+  // Non-logged-in users don't get a buy action — they see a "Login to buy"
+  // link instead of the Add to Cart button.
+  const showLoginToBuy = interactive && !isAuthenticated;
 
   const decrement = () => setQuantity((q) => Math.max(1, q - 1));
   const increment = () =>
@@ -95,8 +100,9 @@ export default function ProductCard({
       )}
 
       <div className="mt-auto pt-4">
-        {/* Quantity counter — shown only when interactive and in stock */}
-        {showQuantity && interactive && inStock && (
+        {/* Quantity counter — shown only for logged-in shoppers on an
+            interactive, in-stock card. */}
+        {showQuantity && interactive && !showLoginToBuy && inStock && (
           <div className="mb-3 flex items-center gap-3">
             <span className="text-sm text-zinc-600">Qty</span>
             <div className="flex items-center rounded-md border border-zinc-300">
@@ -125,16 +131,27 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* Add to Cart button — only interactive cards render it */}
-        {interactive && (
-          <button
-            type="button"
-            disabled={!inStock}
-            onClick={() => onAddToCart?.(product, quantity)}
-            className={`w-full ${getButtonClasses(inStock)}`}
+        {/* Guests see a "Login to buy" link instead of the Add to Cart
+            button; logged-in shoppers get the real button. */}
+        {showLoginToBuy ? (
+          <Link
+            href="/login"
+            data-testid="login-to-buy"
+            className={`w-full ${getButtonClasses(true)}`}
           >
-            {inStock ? "Add to Cart" : "Unavailable"}
-          </button>
+            Login to buy
+          </Link>
+        ) : (
+          interactive && (
+            <button
+              type="button"
+              disabled={!inStock}
+              onClick={() => onAddToCart?.(product, quantity)}
+              className={`w-full ${getButtonClasses(inStock)}`}
+            >
+              {inStock ? "Add to Cart" : "Unavailable"}
+            </button>
+          )
         )}
       </div>
     </Card>

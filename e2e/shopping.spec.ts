@@ -1,6 +1,23 @@
 import { test, expect } from "@playwright/test";
 import { registerCustomer } from "./helpers";
 
+test.describe("Guest browsing", () => {
+  test("shows a 'Login to buy' link instead of Add to Cart for guests", async ({
+    page,
+  }) => {
+    // The product detail page renders the AddToCartButton client island, which
+    // shows a "Login to buy" link (not an Add to Cart button) for guests.
+    await page.goto("/products/1");
+    const detailLink = page.getByTestId("login-to-buy");
+    await expect(detailLink).toBeVisible({ timeout: 60_000 });
+    await expect(detailLink).toHaveText(/login to buy/i);
+    // A guest sees the login link, not an Add to Cart button, on the detail page.
+    await expect(page.getByTestId("add-to-cart")).toHaveCount(0);
+    await detailLink.click();
+    await expect(page).toHaveURL(/\/login$/);
+  });
+});
+
 test.describe("Customer shopping journey", () => {
   test("browses products, adds to cart, and checks out", async ({ page }) => {
     await registerCustomer(page);

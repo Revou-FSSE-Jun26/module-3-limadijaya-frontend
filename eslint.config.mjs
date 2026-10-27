@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test artifacts (gitignored) — not source to lint.
+    "playwright-report/**",
+    "test-results/**",
+    "playwright/.cache/**",
   ]),
 ]);
 

@@ -4,6 +4,7 @@
 // Components.
 
 import type {
+  ApiResult,
   Category,
   CategoryInput,
   CreateOrderPayload,
@@ -16,10 +17,14 @@ import type {
 } from "./types";
 
 /**
- * Shared helper: call a same-origin API route and throw an Error carrying the
- * backend's `error`/`message` on a non-OK response.
+ * Call a same-origin API route and resolve the response into an `ApiResult<T>`
+ * discriminated union: `{ ok: true, data }` on success, `{ ok: false, status,
+ * message }` on failure (carrying the backend's `error`/`message`).
  */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestResult<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<ApiResult<T>> {
   const res = await fetch(path, { cache: "no-store", ...init });
 
   if (!res.ok) {
@@ -30,13 +35,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // keep default message
     }
-    throw new Error(message);
+    return { ok: false, status: res.status, message };
   }
 
   // DELETE handlers may return an empty body.
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) return { ok: true, data: undefined as T };
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return { ok: true, data: (text ? JSON.parse(text) : undefined) as T };
+}
+
+/**
+ * Shared helper: unwrap an `ApiResult<T>`, returning the data on success and
+ * throwing an Error carrying the backend message on failure. Callers that want
+ * the raw union can use `requestResult` directly.
+ */
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const result = await requestResult<T>(path, init);
+  // Narrow on the `ok` discriminant to pick the right shape.
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+  return result.data;
 }
 
 function jsonInit(method: string, body: unknown): RequestInit {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -30,16 +30,23 @@ export default function AddToCartButton({
 }: AddToCartButtonProps) {
   const { isAuthenticated, isAdmin } = useAuth();
   const { addItem } = useCart();
-  const router = useRouter();
 
   const inStock = product.stock_quantity > 0;
 
+  // Guests get a visible "Login to buy" link instead of the Add to Cart button.
+  if (!isAuthenticated) {
+    return (
+      <Link
+        href="/login"
+        data-testid="login-to-buy"
+        className={`${getButtonClasses(true)} ${className}`}
+      >
+        Login to buy
+      </Link>
+    );
+  }
+
   function handleClick() {
-    if (!isAuthenticated) {
-      toast("Please sign in to add items to your cart.", { icon: "🔒" });
-      router.push("/login");
-      return;
-    }
     if (isAdmin) {
       toast.error("Admins manage the catalog and cannot place orders.");
       return;
