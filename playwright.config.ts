@@ -13,7 +13,13 @@ import { defineConfig, devices } from "@playwright/test";
  * NEXT_PUBLIC_API_BASE_URL in the environment if needed.
  */
 const PORT = 3000;
-const BASE_URL = `http://localhost:${PORT}`;
+const LOCAL_URL = `http://localhost:${PORT}`;
+
+// Target a live deployment (e.g. the Vercel production URL) by setting
+// PLAYWRIGHT_BASE_URL. When it points somewhere other than localhost, the local
+// dev server is not started and tests run straight against that URL.
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || LOCAL_URL;
+const USE_LOCAL_SERVER = BASE_URL === LOCAL_URL;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -41,13 +47,17 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: "npm run dev",
-    url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-    env: {
-      NODE_OPTIONS: "--use-system-ca",
-    },
-  },
+  // Only spin up the local dev server when targeting localhost. Against a live
+  // deployment there is nothing to start.
+  webServer: USE_LOCAL_SERVER
+    ? {
+        command: "npm run dev",
+        url: BASE_URL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+        env: {
+          NODE_OPTIONS: "--use-system-ca",
+        },
+      }
+    : undefined,
 });

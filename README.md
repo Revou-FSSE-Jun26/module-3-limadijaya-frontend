@@ -174,6 +174,21 @@ live Module 2 API.
    npx playwright show-report
    ```
 
+### Running against the live deployment
+
+Set `PLAYWRIGHT_BASE_URL` to a deployed URL (e.g. the Vercel production URL) to run
+the same suite against it. When the base URL is not `localhost`, Playwright skips the
+local dev server and hits the live site directly:
+
+```bash
+# macOS/Linux
+PLAYWRIGHT_BASE_URL=https://module-3-limadijaya-frontend.vercel.app npm run test:e2e
+```
+```powershell
+# Windows PowerShell
+$env:PLAYWRIGHT_BASE_URL="https://module-3-limadijaya-frontend.vercel.app"; npm run test:e2e
+```
+
 ### What the tests cover
 
 - **`e2e/auth.spec.ts`** — registration, session persistence across refresh, field
